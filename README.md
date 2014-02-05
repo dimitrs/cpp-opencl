@@ -11,6 +11,7 @@ The tool compiles the C++ source into LLVM byte-code, and uses a modified versio
 
 For example, the following code using C++11's std::enable_if can be compiled and executed on the GPU.
 
+```
 
 #include <type_traits>
 
@@ -30,3 +31,5 @@ extern "C" void _Kernel_enable_if_int_argument(int* arg0, int* out)
 {
     out[0] = foo(arg0[0]);
 }
+
+```
