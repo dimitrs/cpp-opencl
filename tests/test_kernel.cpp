@@ -12,6 +12,7 @@
 #include "cl.h"
 
 #include "../sources/compiler/MainEntry.h"
+#include "../sources/compiler/Compiler.h"
 
 class KernelFixture
 {
@@ -81,7 +82,6 @@ public:
 
         Queue.enqueueReadBuffer(O,CL_TRUE,0,ByteLength,static_cast<void*>(&*std::begin(Out)));
     }
-
 
     template<typename T, typename Val=int>
     void Run(T& Buf, cl::NDRange global=cl::NullRange, cl::NDRange local=cl::NullRange)
@@ -154,7 +154,7 @@ private:
             "-I/usr/include",
             "-c", FileName
         };
-        KernelCode = compiler::MainEntry(17, CmdLine);
+        KernelCode = compiler::MainEntry(17, CmdLine, compiler::BuildClCode)[0];
 
 #ifdef HACK
         std::ifstream sourceFile("/tmp/opencl_temp.cl");
@@ -290,7 +290,7 @@ TEST_CASE( "some cl operations", "[opencl]" ) {
             cl_float Out[1] = { 1 };
             K.Run(Arg, Out);
 
-            REQUIRE( 0.0 == Out[0] );
+            REQUIRE( Approx(0.0) == Out[0] );
         }
 
         SECTION( "test std::find_if find an odd number" ) {

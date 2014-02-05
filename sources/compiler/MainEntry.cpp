@@ -257,8 +257,9 @@ static void ParseProgName(SmallVectorImpl<const char *> &ArgVector,
 
 namespace compiler {
 
-
-std::string MainEntry(int Argc, const char **Argv)
+std::vector<std::string> MainEntry(int Argc,
+                                   const char **Argv,
+                                   std::function<std::vector<std::string>(clang::SmallVector<const char*, 256>&)> Func)
 {
     llvm::sys::PrintStackTraceOnErrorSignal();
     llvm::PrettyStackTraceProgram X(Argc, Argv);
@@ -272,10 +273,9 @@ std::string MainEntry(int Argc, const char **Argv)
     if (argv.size() > 1 && StringRef(argv[1]).startswith("-cc1")) {
         StringRef Tool = argv[1] + 4;
         if (Tool == "")
-            return BuildClCode(argv.data()+2, argv.data()+argv.size(), argv[0],
-                    (void*) (intptr_t) GetExecutablePath, argv);
+            return Func(argv);
         llvm::errs() << "error: unknown integrated tool '" << Tool << "'\n";
-        return "";
+        return {"",""};
     }
 
     bool CanonicalPrefixes = true;
@@ -385,8 +385,9 @@ std::string MainEntry(int Argc, const char **Argv)
     OwningPtr<Compilation> C(TheDriver.BuildCompilation(argv));
     int Res = 0;
     SmallVector<std::pair<int, const Command *>, 4> FailingCommands;
-
+#ifdef Out
     C->PrintJob(llvm::errs(), C->getJobs(), "\n", true);
+#endif
 
     const JobList *Jobs = cast<JobList>(&C->getJobs());
     for (JobList::const_iterator it = Jobs->begin(), ie = Jobs->end(); it != ie; ++it) {
@@ -398,7 +399,7 @@ std::string MainEntry(int Argc, const char **Argv)
             if (argv2.size() > 1 && StringRef(argv2[1]).startswith("-cc1")) {
                 StringRef Tool = argv2[1] + 4;
                 if (Tool == "")
-                    return BuildClCode(argv2.data()+2, argv2.data()+argv2.size(), argv2[0], (void*) (intptr_t) GetExecutablePath, argv2);
+                    return Func(argv2);
             }
         }
     }
@@ -440,7 +441,7 @@ std::string MainEntry(int Argc, const char **Argv)
         Res = 1;
 #endif
 
-    return "";
+    return {"",""};
 }
 
 

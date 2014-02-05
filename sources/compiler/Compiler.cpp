@@ -1,6 +1,7 @@
 
 #include "Compiler.h"
 #include "BitcodeDisassembler.h"
+#include "Rewriter.h"
 
 #include <memory>
 #include <vector>
@@ -67,36 +68,51 @@ void InitializeTargets()
     llvm::InitializeAllAsmParsers();
 }
 
-OwningPtr<CompilerInstance> CreateCompilerInvocation(const char **ArgBegin, const char **ArgEnd,
-                                                     const char *Argv0, void *MainAddr)
+std::string GetExecutablePath(const char *Argv0, bool CanonicalPrefixes) {
+  if (!CanonicalPrefixes)
+    return Argv0;
+
+  // This just needs to be some symbol in the binary; C++ doesn't
+  // allow taking the address of ::main however.
+  void *P = (void*) (intptr_t) GetExecutablePath;
+  return llvm::sys::fs::getMainExecutable(Argv0, P);
+}
+
+
+OwningPtr<CompilerInstance> CreateCompilerInvocation(SmallVector<const char*, 256>& Args, DiagnosticConsumer* DiagsBuffer)
 {
+    const char** ArgBegin = Args.data()+2;
+    const char** ArgEnd = Args.data()+Args.size();
+    const char* ExecutablePath = Args[0];
+
     OwningPtr<CompilerInstance> Clang { new CompilerInstance() };
 
     IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
     IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
-    TextDiagnosticBuffer *DiagsBuffer = new TextDiagnosticBuffer;
-    DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagsBuffer);
+    TextDiagnosticBuffer *DiagsB = new TextDiagnosticBuffer;
+    //IgnoringDiagConsumer *DiagsB = new IgnoringDiagConsumer;
+    DiagnosticsEngine Diags(DiagID, &*DiagOpts, DiagsB);
     bool Success;
     Success = CompilerInvocation::CreateFromArgs(Clang->getInvocation(),
                                                  ArgBegin, ArgEnd, Diags);
+
+    void *MainAddr = (void*) (intptr_t) GetExecutablePath;
 
     // Infer the builtin include path if unspecified.
     if (Clang->getHeaderSearchOpts().UseBuiltinIncludes &&
         Clang->getHeaderSearchOpts().ResourceDir.empty())
       Clang->getHeaderSearchOpts().ResourceDir =
-        CompilerInvocation::GetResourcesPath(Argv0, MainAddr);
+        CompilerInvocation::GetResourcesPath(ExecutablePath, MainAddr);
 
     // Create the actual diagnostics engine.
-    Clang->createDiagnostics();
+    if (DiagsBuffer)
+        Clang->createDiagnostics();
+    else
+        Clang->createDiagnostics(new IgnoringDiagConsumer);
     if (!Clang->hasDiagnostics())
         return OwningPtr<CompilerInstance>();
 
-    // Set an error handler, so that any LLVM backend diagnostics go through our
-    // error handler.
-    llvm::install_fatal_error_handler(LLVMErrorHandler,
-                                    static_cast<void*>(&Clang->getDiagnostics()));
-
-    DiagsBuffer->FlushDiagnostics(Clang->getDiagnostics());
+    DiagsB->FlushDiagnostics(Clang->getDiagnostics());
     if (!Success) {
         return OwningPtr<CompilerInstance>();
     }
@@ -129,6 +145,21 @@ void CreateAST(OwningPtr<CompilerInstance>& Clang)
     Clang->createASTContext();
 }
 
+void CreateMainFile(OwningPtr<CompilerInstance>& Clang, const char* SourceFileName)
+{
+    Clang->getSourceManager().createMainFileID(Clang->getFileManager().getFile(SourceFileName));
+    Clang->getDiagnosticClient().BeginSourceFile(Clang->getLangOpts(), &Clang->getPreprocessor());
+}
+
+void InstallFatalErrorHandler(OwningPtr<CompilerInstance>& Clang)
+{
+    llvm::remove_fatal_error_handler();
+    // Set an error handler, so that any LLVM backend diagnostics go through our
+    // error handler.
+    llvm::install_fatal_error_handler(LLVMErrorHandler,
+                                    static_cast<void*>(&Clang->getDiagnostics()));
+}
+
 std::string GetSourceFileName(SmallVector<const char*, 256>& Args)
 {
     SmallVector<const char*, 256>::const_iterator it =
@@ -137,39 +168,54 @@ std::string GetSourceFileName(SmallVector<const char*, 256>& Args)
     else return Args[Args.size()-1];
 }
 
-}  // namespace
-
-namespace compiler {
-
-std::string BuildClCode(
-        const char **ArgBegin, const char **ArgEnd,
-        const char *Argv0, void *MainAddr,
-        SmallVector<const char*, 256>& Args)
+OwningPtr<CompilerInstance> CreateCompilerInstance(SmallVector<const char*, 256>& Args, DiagnosticConsumer* DiagsBuffer)
 {
-    InitializeTargets();
-
-    OwningPtr<CompilerInstance> Clang { CreateCompilerInvocation(ArgBegin, ArgEnd, Argv0, MainAddr) };
+    OwningPtr<CompilerInstance> Clang { CreateCompilerInvocation(Args, DiagsBuffer) };
+    InstallFatalErrorHandler(Clang);
     CreateTarget(Clang);
     CreateFileManager(Clang);
     CreatePreprocessor(Clang);
     CreateAST(Clang);
+    CreateMainFile(Clang, GetSourceFileName(Args).c_str());
+    return Clang;
+}
 
-    std::string SourceFileName = GetSourceFileName(Args);
-    Clang->getSourceManager().createMainFileID(Clang->getFileManager().getFile(SourceFileName.c_str()));
-    Clang->getDiagnosticClient().BeginSourceFile(Clang->getLangOpts(), &Clang->getPreprocessor());
+void CompileCpuSourceFile(SmallVector<const char*, 256>& Args, std::string SourceCode)
+{
+    std::string CpuFileName { GetSourceFileName(Args) + "_cpu.cpp" };
+    std::ofstream cpu_file{ CpuFileName };
+    cpu_file << SourceCode;
+    cpu_file.close();
 
-    bool Success = ExecuteCompilerInvocation(Clang.get());
+    SmallVector<const char*, 256> ArgsCpu {Args};
+    SmallVector<const char*, 256>::iterator it =
+            find_if(begin(ArgsCpu), end(ArgsCpu), [](const char* s) { return string(s) == string("-c"); } );
+    if (it!=end(ArgsCpu)) *++it = CpuFileName.c_str();
+    else ArgsCpu[ArgsCpu.size()-1] = CpuFileName.c_str();
+
+    OwningPtr<CompilerInstance> Clang { CreateCompilerInstance(ArgsCpu, new TextDiagnosticBuffer) };
+
+    ExecuteCompilerInvocation(Clang.get());
 
     // If any timers were active but haven't been destroyed yet, print their
     // results now.  This happens in -disable-free mode.
     llvm::TimerGroup::printAll(llvm::errs());
+}
 
-    // Our error handler depends on the Diagnostics object, which we're
-    // potentially about to delete. Uninstall the handler now so that any
-    // later errors use the default handling behavior instead.
-    llvm::remove_fatal_error_handler();
+std::string CompileGpuSourceFile(SmallVector<const char*, 256>& Args, std::string SourceCode)
+{
+    std::string GpuFileName { GetSourceFileName(Args) + "_gpu.cpp" };
+    std::ofstream gpu_file{ GpuFileName };
+    gpu_file << SourceCode;
+    gpu_file.close();
 
-    if (!Success) return "";
+    SmallVector<const char*, 256> ArgsGpu {Args};
+    SmallVector<const char*, 256>::iterator it2 =
+            find_if(begin(ArgsGpu), end(ArgsGpu), [](const char* s) { return string(s) == string("-c"); } );
+    if (it2!=end(ArgsGpu)) *++it2 = GpuFileName.c_str();
+    else ArgsGpu[ArgsGpu.size()-1] = GpuFileName.c_str();
+
+    OwningPtr<CompilerInstance> Clang { CreateCompilerInstance(ArgsGpu, new TextDiagnosticBuffer) };
 
     OwningPtr<clang::CodeGenAction> Act(new clang::EmitLLVMOnlyAction());
     if (!Clang->ExecuteAction(*Act)) {
@@ -178,16 +224,52 @@ std::string BuildClCode(
         return "";
     }
 
-    BitcodeDisassembler cm{Act->takeModule()};
+    compiler::BitcodeDisassembler cm{Act->takeModule()};
     std::string OpenCLSource = cm.DisassembleModule();
-#ifdef WRITE_TO_FILE
-    std::ofstream a_file{"/tmp/opencl_temp.cl"};
+
+    std::string OpenClFileName { GetSourceFileName(Args) + ".cl" };
+    std::ofstream a_file{ OpenClFileName };
     a_file << OpenCLSource;
     a_file.close();
+
+#ifdef Put
+    llvm::errs() << "_________________ OpenCL _____________________________\n";
+    llvm::errs() << OpenCLSource;
+    llvm::errs() << "\n\n";
 #endif
+    return OpenCLSource;
+}
+
+
+}  // namespace
+
+namespace compiler {
+
+
+std::vector<std::string> RewriteSourceFile(SmallVector<const char*, 256>& Args)
+{
+    OwningPtr<CompilerInstance> Clang { CreateCompilerInstance(Args, nullptr) };
+
+    compiler::RewriterASTConsumer* TheConsumer = new compiler::RewriterASTConsumer {Clang};
+    Preprocessor &PP = Clang->getPreprocessor();
+    PP.addPPCallbacks(TheConsumer); // Takes ownership of TheConsumer
+    ParseAST(Clang, *TheConsumer);
+
+    return {TheConsumer->GetRewritenCpuSource(), TheConsumer->GetRewritenGpuSource()};
+}
+
+std::vector<std::string> BuildClCode(SmallVector<const char*, 256>& Args)
+{
+    InitializeTargets();
+
+    auto Sources = RewriteSourceFile(Args);
+    assert(Sources.size() == 2);
+    CompileCpuSourceFile(Args, Sources[0]);
+    CompileGpuSourceFile(Args, Sources[1]);
+
     llvm::llvm_shutdown();
 
-    return OpenCLSource;
+    return {};
 }
 
 } // namespace compiler

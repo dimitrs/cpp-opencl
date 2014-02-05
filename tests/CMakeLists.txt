@@ -12,12 +12,15 @@ set(HEADERS
     ../sources/compiler/MainEntry.h
     ../sources/compiler/BitcodeDisassembler.h
     ../sources/compiler/Compiler.h
+    ../sources/compiler/Rewriter.h
+    ../sources/compute/ParallelForEach.h
 )
 
 set(SOURCES
     ../sources/compiler/MainEntry.cpp
     ../sources/compiler/BitcodeDisassembler.cpp
     ../sources/compiler/Compiler.cpp
+    ../sources/compiler/Rewriter.cpp
 )
 
 
@@ -38,10 +41,16 @@ set(LIBS
 set(OPENCL_LIB OpenCL)
 
 configure_file(kernel.cpp kernel.cpp COPYONLY)
+configure_file(../sources/compute/ParallelForEach.h ParallelForEach.h COPYONLY)
+configure_file(../include/cl.h cl.h COPYONLY)
 
-add_executable(test ${HEADERS} ${SOURCES} test.cpp)
+add_executable(test_kernel ${HEADERS} ${SOURCES} test_kernel.cpp)
+target_link_libraries(test_kernel ${OPENCL_LIB} ${LIBS} ${LLVM_LIBS_CORE} ${CLANG_LIBS} )
 
-target_link_libraries(test ${OPENCL_LIB} ${LIBS} ${LLVM_LIBS_CORE} ${CLANG_LIBS} )
+add_executable(test_rewriter ${HEADERS} ${SOURCES} test_rewriter.cpp)
+target_link_libraries(test_rewriter ${OPENCL_LIB} ${LIBS} ${LLVM_LIBS_CORE} ${CLANG_LIBS} )
+
+
 
 
 
