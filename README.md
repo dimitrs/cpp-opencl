@@ -67,16 +67,18 @@ compute::parallel_for_each(In.begin(), In.end(), OutGpu.begin(), [](int x){
 
 If you want to use function overloading using the amp_restrict attribute, you will need to patch your Clang compiler:
 
+```
 git clone https://github.com/llvm-mirror/clang.git
 cd clang
 git checkout 5806bb59d2d19a9b32b739589865d8bb1e2627c5
 git apply PATH-TO-cpp_opencl/restrict.patch
-
+```
 I used this llvm version:
-
+```
 git clone https://github.com/llvm-mirror/llvm.git
 cd llvm
 git checkout 47042bcc266285676f8ff284e5d46a2c196c367b
+```
 
 You can use any recent Clang version already installed on your machine (without the patch), if you do not intend to use the amp_restrict attribute. 
 
