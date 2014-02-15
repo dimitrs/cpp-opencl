@@ -43,3 +43,62 @@ int main() {
   return 0;
 }
 ```
+
+Function Overloading 
+--------------------
+
+Additionally, it is possible to overload functions. The “A::GetIt” member function below is overloaded. The function marked as “gpu” will be executed on the GPU and other on the CPU.
+
+```
+struct A {
+  int GetIt() const __attribute__((amp_restrict("cpu"))) {
+    return 2;
+  }
+  int GetIt() const __attribute__((amp_restrict("gpu"))) {
+    return 4;
+  }
+};
+
+compute::parallel_for_each(In.begin(), In.end(), OutGpu.begin(), [](int x){
+    A a; 
+    return a.GetIt(); // returns 4
+});
+```
+
+If you want to use function overloading using the amp_restrict attribute, you will need to patch your Clang compiler:
+
+git clone https://github.com/llvm-mirror/clang.git
+cd clang
+git checkout 5806bb59d2d19a9b32b739589865d8bb1e2627c5
+git apply PATH-TO-cpp_opencl/restrict.patch
+
+I used this llvm version:
+
+git clone https://github.com/llvm-mirror/llvm.git
+cd llvm
+git checkout 47042bcc266285676f8ff284e5d46a2c196c367b
+
+You can use any recent Clang version already installed on your machine (without the patch), if you do not intend to use the amp_restrict attribute. 
+
+
+Build the Executable 
+--------------------
+
+The tool uses a special compiler based on Clang/LLVM. 
+
+cpp_opencl -x c++ -std=c++11 -O3 -o Input.cc.o -c Input.cc 
+
+The above command generates four files: 
+1. Input.cc.o 
+2. Input.cc.cl 
+3. Input.cc_cpu.cpp 
+4. Input.cc_gpu.cpp 
+
+Use the Clang C++ compiler directly to link: 
+
+clang++ ./Input.cc.o -o test -lOpenCL 
+
+
+Then just execute: 
+
+./test

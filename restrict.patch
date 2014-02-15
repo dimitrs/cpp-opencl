@@ -1,0 +1,394 @@
+diff --git a/include/clang/Basic/Attr.td b/include/clang/Basic/Attr.td
+index 8c820a0..0da4e02 100644
+--- a/include/clang/Basic/Attr.td
++++ b/include/clang/Basic/Attr.td
+@@ -144,6 +144,12 @@ class IgnoredAttr : Attr {
+ // Attributes begin here
+ //
+ 
++def AMPrestrict : InheritableAttr {
++  let Spellings = [GNU<"amp_restrict">];
++  let Args = [VariadicExprArgument<"Args">];
++  let Subjects = [Function];
++}
++
+ def AddressSpace : Attr {
+   let Spellings = [GNU<"address_space">];
+   let Args = [IntArgument<"AddressSpace">];
+@@ -169,13 +175,13 @@ def Aligned : InheritableAttr {
+ 
+ def AlignMac68k : InheritableAttr {
+   let Spellings = [];
+-  let SemaHandler = 0;
+-}
+-
+-def AllocSize : InheritableAttr {
+-  let Spellings = [GNU<"alloc_size">, CXX11<"gnu", "alloc_size">];
+-  let Args = [VariadicUnsignedArgument<"Args">];
+-}
++  let SemaHandler = 0;
++}
++
++def AllocSize : InheritableAttr {
++  let Spellings = [GNU<"alloc_size">, CXX11<"gnu", "alloc_size">];
++  let Args = [VariadicUnsignedArgument<"Args">];
++}
+ 
+ def AlwaysInline : InheritableAttr {
+   let Spellings = [GNU<"always_inline">, CXX11<"gnu", "always_inline">];
+@@ -323,17 +329,17 @@ def C11NoReturn : InheritableAttr {
+ 
+ def CXX11NoReturn : InheritableAttr {
+   let Spellings = [CXX11<"","noreturn">, CXX11<"std","noreturn">];
+-  let Subjects = [Function];
+-}
+-
+-def OpenCLKernel : InheritableAttr {
+-  let Spellings = [Keyword<"__kernel">, Keyword<"kernel">];
+-}
+-
+-def OpenCLImageAccess : Attr {
+-  let Spellings = [GNU<"opencl_image_access">];
+-  let Args = [IntArgument<"Access">];
+-}
++  let Subjects = [Function];
++}
++
++def OpenCLKernel : InheritableAttr {
++  let Spellings = [Keyword<"__kernel">, Keyword<"kernel">];
++}
++
++def OpenCLImageAccess : Attr {
++  let Spellings = [GNU<"opencl_image_access">];
++  let Args = [IntArgument<"Access">];
++}
+ 
+ def Deprecated : InheritableAttr {
+   let Spellings = [GNU<"deprecated">, CXX11<"gnu", "deprecated">];
+@@ -342,13 +348,13 @@ def Deprecated : InheritableAttr {
+ 
+ def Destructor : InheritableAttr {
+   let Spellings = [GNU<"destructor">, CXX11<"gnu", "destructor">];
+-  let Args = [IntArgument<"Priority">];
+-}
+-
+-def ExtVectorType : Attr {
+-  let Spellings = [GNU<"ext_vector_type">];
+-  let Args = [ExprArgument<"NumElements">];
+-  let ASTNode = 0;
++  let Args = [IntArgument<"Priority">];
++}
++
++def ExtVectorType : Attr {
++  let Spellings = [GNU<"ext_vector_type">];
++  let Args = [ExprArgument<"NumElements">];
++  let ASTNode = 0;
+ }
+ 
+ def FallThrough : Attr {
+@@ -435,13 +441,13 @@ def MBlazeSaveVolatiles : InheritableAttr {
+ 
+ def Mips16 : InheritableAttr {
+   let Spellings = [GNU<"mips16">, CXX11<"gnu", "mips16">];
+-  let Subjects = [Function];
+-}
+-
+-def Mode : Attr {
+-  let Spellings = [GNU<"mode">, CXX11<"gnu", "mode">];
+-  let Args = [IdentifierArgument<"Mode">];
+-}
++  let Subjects = [Function];
++}
++
++def Mode : Attr {
++  let Spellings = [GNU<"mode">, CXX11<"gnu", "mode">];
++  let Args = [IdentifierArgument<"Mode">];
++}
+ 
+ def Naked : InheritableAttr {
+   let Spellings = [GNU<"naked">, CXX11<"gnu", "naked">];
+@@ -554,28 +560,28 @@ def ObjCMethodFamily : InheritableAttr {
+ }
+ 
+ def ObjCNSObject : InheritableAttr {
+-  let Spellings = [GNU<"NSObject">];
+-}
+-
+-def ObjCPreciseLifetime : InheritableAttr {
+-  let Spellings = [GNU<"objc_precise_lifetime">];
+-  let Subjects = [Var];
+-}
+-
+-def ObjCReturnsInnerPointer : InheritableAttr {
+-  let Spellings = [GNU<"objc_returns_inner_pointer">];
+-  let Subjects = [ObjCMethod];
+-}
++  let Spellings = [GNU<"NSObject">];
++}
++
++def ObjCPreciseLifetime : InheritableAttr {
++  let Spellings = [GNU<"objc_precise_lifetime">];
++  let Subjects = [Var];
++}
++
++def ObjCReturnsInnerPointer : InheritableAttr {
++  let Spellings = [GNU<"objc_returns_inner_pointer">];
++  let Subjects = [ObjCMethod];
++}
+ 
+ def ObjCRequiresSuper : InheritableAttr {
+   let Spellings = [GNU<"objc_requires_super">];
+-  let Subjects = [ObjCMethod];
+-}
+-
+-def ObjCRootClass : InheritableAttr {
+-  let Spellings = [GNU<"objc_root_class">];
+-  let Subjects = [ObjCInterface];
+-}
++  let Subjects = [ObjCMethod];
++}
++
++def ObjCRootClass : InheritableAttr {
++  let Spellings = [GNU<"objc_root_class">];
++  let Subjects = [ObjCInterface];
++}
+ 
+ def Overloadable : Attr {
+   let Spellings = [GNU<"overloadable">];
+@@ -689,13 +695,13 @@ def ArcWeakrefUnavailable : InheritableAttr {
+ def ObjCGC : Attr {
+   let Spellings = [GNU<"objc_gc">];
+   let Args = [IdentifierArgument<"Kind">];
+-  let ASTNode = 0;
+-}
+-
+-def ObjCOwnership : InheritableAttr {
+-  let Spellings = [GNU<"objc_ownership">];
+-  let Args = [IdentifierArgument<"Kind">];
+-  let ASTNode = 0;
++  let ASTNode = 0;
++}
++
++def ObjCOwnership : InheritableAttr {
++  let Spellings = [GNU<"objc_ownership">];
++  let Args = [IdentifierArgument<"Kind">];
++  let ASTNode = 0;
+ }
+ 
+ def ObjCRequiresPropertyDefs : InheritableAttr {
+diff --git a/include/clang/Basic/TokenKinds.def b/include/clang/Basic/TokenKinds.def
+index 3f156a8..1dde81b 100644
+--- a/include/clang/Basic/TokenKinds.def
++++ b/include/clang/Basic/TokenKinds.def
+@@ -537,6 +537,7 @@ ALIAS("_thiscall"        , __thiscall , KEYMS)
+ ALIAS("_uuidof"          , __uuidof   , KEYMS | KEYBORLAND)
+ ALIAS("_inline"          , inline     , KEYMS)
+ ALIAS("_declspec"        , __declspec , KEYMS)
++ALIAS("restrict"         , restrict   , KEYALL)
+ 
+ // Borland Extensions which should be disabled in strict conformance mode.
+ ALIAS("_pascal"      , __pascal   , KEYBORLAND)
+diff --git a/include/clang/Parse/Parser.h b/include/clang/Parse/Parser.h
+index d4c867d..9793bd0 100644
+--- a/include/clang/Parse/Parser.h
++++ b/include/clang/Parse/Parser.h
+@@ -469,7 +469,7 @@ private:
+ public:
+   /// NextToken - This peeks ahead one token and returns it without
+   /// consuming it.
+-  const Token &NextToken() {
++  const Token &NextToken() const {
+     return PP.LookAhead(0);
+   }
+ 
+diff --git a/lib/Parse/ParseDecl.cpp b/lib/Parse/ParseDecl.cpp
+index 0b276d0..60d6930 100644
+--- a/lib/Parse/ParseDecl.cpp
++++ b/lib/Parse/ParseDecl.cpp
+@@ -139,7 +139,6 @@ void Parser::ParseGNUAttributes(ParsedAttributes &attrs,
+       // we have an identifier or declaration specifier (const, int, etc.)
+       IdentifierInfo *AttrName = Tok.getIdentifierInfo();
+       SourceLocation AttrNameLoc = ConsumeToken();
+-
+       if (Tok.is(tok::l_paren)) {
+         // handle "parameterized" attributes
+         if (LateAttrs && isAttributeLateParsed(*AttrName)) {
+@@ -2688,6 +2687,14 @@ void Parser::ParseDeclarationSpecifiers(DeclSpec &DS,
+       continue;
+     }
+ 
++    case tok::kw_restrict:
++      Diag(Loc, diag::warn_objc_protocol_qualifier_missing_id);
++      if (NextToken().is(tok::l_paren)) {
++        ConsumeToken();
++        continue;
++      }
++      break;
++
+     // GNU attributes support.
+     case tok::kw___attribute:
+       ParseGNUAttributes(DS.getAttributes(), 0, LateAttrs);
+@@ -3016,11 +3023,6 @@ void Parser::ParseDeclarationSpecifiers(DeclSpec &DS,
+       isInvalid = DS.SetTypeQual(DeclSpec::TQ_volatile, Loc, PrevSpec, DiagID,
+                                  getLangOpts());
+       break;
+-    case tok::kw_restrict:
+-      isInvalid = DS.SetTypeQual(DeclSpec::TQ_restrict, Loc, PrevSpec, DiagID,
+-                                 getLangOpts());
+-      break;
+-
+     // C++ typename-specifier:
+     case tok::kw_typename:
+       if (TryAnnotateTypeOrScopeToken()) {
+@@ -3792,7 +3794,6 @@ bool Parser::isTypeQualifier() const {
+     // type-qualifier
+   case tok::kw_const:
+   case tok::kw_volatile:
+-  case tok::kw_restrict:
+   case tok::kw___private:
+   case tok::kw___local:
+   case tok::kw___global:
+@@ -3801,6 +3802,9 @@ bool Parser::isTypeQualifier() const {
+   case tok::kw___read_write:
+   case tok::kw___write_only:
+     return true;
++  case tok::kw_restrict:
++    if (NextToken().is(tok::l_paren)) return false;
++    return false;
+   }
+ }
+ 
+@@ -3938,7 +3942,6 @@ bool Parser::isTypeSpecifierQualifier() {
+     // type-qualifier
+   case tok::kw_const:
+   case tok::kw_volatile:
+-  case tok::kw_restrict:
+ 
+     // Debugger support.
+   case tok::kw___unknown_anytype:
+@@ -3977,6 +3980,10 @@ bool Parser::isTypeSpecifierQualifier() {
+   // C11 _Atomic
+   case tok::kw__Atomic:
+     return true;
++
++  case tok::kw_restrict:
++    if (NextToken().is(tok::l_paren)) return false;
++    return false;
+   }
+ }
+ 
+@@ -4094,7 +4101,6 @@ bool Parser::isDeclarationSpecifier(bool DisambiguatingWithExpression) {
+     // type-qualifier
+   case tok::kw_const:
+   case tok::kw_volatile:
+-  case tok::kw_restrict:
+ 
+     // function-specifier
+   case tok::kw_inline:
+@@ -4157,6 +4163,10 @@ bool Parser::isDeclarationSpecifier(bool DisambiguatingWithExpression) {
+   case tok::kw___write_only:
+ 
+     return true;
++
++  case tok::kw_restrict:
++    if (NextToken().is(tok::l_paren)) return false;
++    return false;
+   }
+ }
+ 
+@@ -4294,8 +4304,17 @@ void Parser::ParseTypeQualifierListOpt(DeclSpec &DS,
+                                  getLangOpts());
+       break;
+     case tok::kw_restrict:
+-      isInvalid = DS.SetTypeQual(DeclSpec::TQ_restrict, Loc, PrevSpec, DiagID,
+-                                 getLangOpts());
++      if (NextToken().is(tok::l_paren)) {
++        ConsumeToken();
++        if (ExpectAndConsume(tok::l_paren, diag::err_expected_lparen_after, "restrict")) {
++          SkipUntil(tok::r_paren, true); // skip until ) or ;
++          break;
++        }
++        //ConsumeToken();
++      }
++      else 
++        isInvalid = DS.SetTypeQual(DeclSpec::TQ_restrict, Loc, PrevSpec, DiagID,
++                                   getLangOpts());
+       break;
+     case tok::kw__Atomic:
+       if (!AtomicAllowed)
+diff --git a/lib/Parse/ParseExprCXX.cpp b/lib/Parse/ParseExprCXX.cpp
+index 9704b98..b90aaa0 100644
+--- a/lib/Parse/ParseExprCXX.cpp
++++ b/lib/Parse/ParseExprCXX.cpp
+@@ -1049,12 +1049,14 @@ ExprResult Parser::ParseLambdaExpressionAfterIntroducer(
+ 
+   Actions.ActOnStartOfLambdaDefinition(Intro, D, getCurScope());
+ 
++  /*
+   // Parse compound-statement.
+   if (!Tok.is(tok::l_brace)) {
+     Diag(Tok, diag::err_expected_lambda_body);
+     Actions.ActOnLambdaError(LambdaBeginLoc, getCurScope());
+     return ExprError();
+   }
++  */
+ 
+   StmtResult Stmt(ParseCompoundStatementBody());
+   BodyScope.Exit();
+diff --git a/lib/Parse/Parser.cpp b/lib/Parse/Parser.cpp
+index 2c6d6b3..3a1e461 100644
+--- a/lib/Parse/Parser.cpp
++++ b/lib/Parse/Parser.cpp
+@@ -974,7 +974,8 @@ Decl *Parser::ParseFunctionDefinition(ParsingDeclarator &D,
+     AttributeList *DtorAttrs = D.getAttributes();
+     while (DtorAttrs) {
+       if (!IsThreadSafetyAttribute(DtorAttrs->getName()->getName()) &&
+-          !DtorAttrs->isCXX11Attribute()) {
++          !DtorAttrs->isCXX11Attribute() &&
++          !llvm::StringSwitch<bool>(DtorAttrs->getName()->getName()).Case("amp_restrict", true)) {
+         Diag(DtorAttrs->getLoc(), diag::warn_attribute_on_function_definition)
+           << DtorAttrs->getName()->getName();
+       }
+diff --git a/lib/Sema/SemaDeclAttr.cpp b/lib/Sema/SemaDeclAttr.cpp
+index ef401c3..9086688 100644
+--- a/lib/Sema/SemaDeclAttr.cpp
++++ b/lib/Sema/SemaDeclAttr.cpp
+@@ -775,6 +775,28 @@ static void handleSharedLockFunctionAttr(Sema &S, Decl *D,
+                                     Attr.getAttributeSpellingListIndex()));
+ }
+ 
++static void handleAMPrestrictAttr(Sema &S, Decl *D,
++                                  const AttributeList &Attr) { 
++  assert(!Attr.isInvalid());
++
++  // check that the attribute is applied to a function
++  if (isa<FunctionDecl>(D) || isa<FunctionTemplateDecl>(D)) {
++      SmallVector<Expr*, 1> Args;
++      for(unsigned Idx = 0; Idx < Attr.getNumArgs(); ++Idx) {
++        Expr *ArgExp = Attr.getArg(Idx);
++        Args.push_back(ArgExp);
++      }
++
++      unsigned Size = Args.size();
++      Expr **StartArg = Size == 0 ? 0 : &Args[0];
++      D->addAttr(::new (S.Context)
++                 AMPrestrictAttr(Attr.getRange(), S.Context,
++                                 StartArg, Size,
++                                 Attr.getAttributeSpellingListIndex()));
++
++  }
++}
++
+ static void handleExclusiveLockFunctionAttr(Sema &S, Decl *D,
+                                             const AttributeList &Attr) {
+   SmallVector<Expr*, 1> Args;
+@@ -5001,6 +5023,9 @@ static void ProcessInheritableDeclAttr(Sema &S, Scope *scope, Decl *D,
+   case AttributeList::AT_ExclusiveLockFunction:
+     handleExclusiveLockFunctionAttr(S, D, Attr);
+     break;
++  case AttributeList::AT_AMPrestrict:
++    handleAMPrestrictAttr(S, D, Attr);
++    break;
+   case AttributeList::AT_ExclusiveLocksRequired:
+     handleExclusiveLocksRequiredAttr(S, D, Attr);
+     break;
